@@ -1,8 +1,9 @@
 
 from Tkinter import *
 import random
-from math import sqrt
+import math
 import subprocess 
+from numpy import deg2rad
 
 root = Tk()
 root.title("The Game...")
@@ -55,7 +56,7 @@ bullet_sprite = PhotoImage(file='Bullets.gif')
 enemy = PhotoImage(file='Enemy.gif')
 out_of_ammo = PhotoImage(file='no_ammo.gif')
 
-block = PhotoImage(file='block.gif')
+block = PhotoImage(file='collision_block.gif')
 collide_block = PhotoImage(file='collision_block.gif')
 
 
@@ -243,7 +244,7 @@ class Player(object):
            xy2 = x2 + y2
            
            global distance
-           distance = sqrt(xy2)
+           distance = math.sqrt(xy2)
            
            if self.alive == False:
                self.crosshair = canvas.create_image(self.mx,self.my,image=death_message)
@@ -338,6 +339,12 @@ class Player(object):
        self.health_bar_outline = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+my_loadout.health,self.coords[1]-70)
        self.health_bar = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+self.health,self.coords[1]-70,fill='green'           )
        
+       if len(bullet_list) >= 10:
+           canvas.delete(bullet_list[0].bimage)
+           bullet_list.remove(bullet_list[0])
+           
+       
+       
        root.after(10,self.player_loop)
     def fire(self):
         global firing
@@ -357,7 +364,7 @@ class Player(object):
         
         m1 = mouse_vector[0] ** 2
         m2 = mouse_vector[1] ** 2
-        mouse_mag = sqrt(m1 + m2)
+        mouse_mag = math.sqrt(m1 + m2)
         
         #gets magnitude with pythagorean theorem
         
@@ -421,7 +428,7 @@ class Player(object):
                 
                 c2 = a2 + b2
                 
-                c = sqrt(c2)
+                c = math.sqrt(c2)
 
                 
                 if c >= my_loadout.range:
@@ -450,30 +457,26 @@ class Player(object):
                             
 
                             if bul_coords[0] <= box[0] and bul_coords[1] > box[1] and bul_coords[1] < box[3]:
-                                canvas.move(bullet.bimage,bullet.velocity[0]*-5,bullet.velocity[1]*5)
                                 bullet.velocity[0] *= -1
                                 
                                 # the bullet hit the left side of a rectangle
                             elif bul_coords[0] >= box[0] and bul_coords[1] > box[1] and bul_coords[1] < box[3]:
-                                canvas.move(bullet.bimage,bullet.velocity[0]*-5,bullet.velocity[1]*5)
                                 bullet.velocity[0] *= -1
                                 
                                 
                                 #bullet hit the right side of a rectangle
                             elif bul_coords[1] <= box[1] and bul_coords[0] > box[0] and bul_coords[0] < box[2]:
-                                canvas.move(bullet.bimage,bullet.velocity[0]*5,bullet.velocity[1]*-5)
                                 bullet.velocity[1] *= -1
                                 
                                 
                                 #bullet hit the top of a rectangle
                             
                             elif bul_coords[1] >= box[1] and bul_coords[0] > box[0] and bul_coords[0] < box[2]:
-                                canvas.move(bullet.bimage,bullet.velocity[0]*5,bullet.velocity[1]*-5)
                                 bullet.velocity[1] *= -1
                                 #bullet hit the bottom of a rectangle
                             
                             
-                                
+                            canvas.move(bullet.bimage,bullet.velocity[0],bullet.velocity[1])
                             
                                 
                         
@@ -515,7 +518,7 @@ class Player(object):
         
         m1 = mouse_vector[0] ** 2
         m2 = mouse_vector[1] ** 2
-        mouse_mag = sqrt(m1 + m2)
+        mouse_mag = math.sqrt(m1 + m2)
         
         #gets magnitude with pythagorean theorem
         
@@ -531,7 +534,7 @@ class Player(object):
         
         
 
-        if self.mag > 0 and mouse_mag <= my_loadout.range and self.alive == True:
+        if self.mag > 0 and mouse_mag <= my_loadout.range and self.alive == True and my_loadout.weapon_type  == 'Sniper Rifle \n':
             
             #gcoords = canvas.coords(self.gun_image)
             
@@ -540,6 +543,46 @@ class Player(object):
             
             bullet_obj = Bullets(velocity = [norm[0],norm[1]+acc],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
             bullet_list.append(bullet_obj)
+            self.mag -= 1
+            
+            #play = subprocess.call(["afplay", gunshot_file])
+            ###^^^ currently lags the game an insane amount^^^
+        elif my_loadout.weapon_type == 'Shotgun \n' and self.alive == True and self.mag > 0 and mouse_mag <= my_loadout.range:
+            #gcoords = canvas.coords(self.gun_image)
+            
+            
+            left_theta = deg2rad(5)
+            right_theta = deg2rad(-5)
+            
+            left_cos = math.cos(left_theta)
+            left_sin = math.sin(left_theta)
+            
+            right_cos = math.cos(right_theta)
+            right_sin = math.sin(right_theta)
+            
+            
+            
+            left_x = norm[0] * left_cos - norm[1] * left_sin
+            left_y = norm[0] * left_sin + norm[1] * left_cos            
+            
+            right_x = norm[0] * right_cos - norm[1] * right_sin
+            right_y = norm[0] * right_sin + norm[1] * right_cos
+            
+            
+            
+            
+            
+            
+            bullet_obj = Bullets(velocity = [left_x,left_y],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
+            bullet_list.append(bullet_obj)
+            
+            bullet_obj = Bullets(velocity = [norm[0],norm[1]],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
+            bullet_list.append(bullet_obj)
+            
+            bullet_obj = Bullets(velocity = [right_x,right_y],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
+            bullet_list.append(bullet_obj)
+            
+            
             self.mag -= 1
             
             #play = subprocess.call(["afplay", gunshot_file])
@@ -562,7 +605,7 @@ class Melee_(object):
             ba2 = (canvas.coords(player.the_player)[0] - canvas.coords(enemy.bimage)[0]) ** 2
             bb2 = (canvas.coords(player.the_player)[1] - canvas.coords(enemy.bimage)[1]) ** 2
             
-            c = sqrt(bb2+ba2)
+            c = math.sqrt(bb2+ba2)
             
             
             
