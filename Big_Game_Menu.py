@@ -14,6 +14,13 @@ main.title("The Game...")
 ### ^^^ 
 
 
+cross_map_img = PhotoImage(file="cross_map.gif")
+circle_map_img = PhotoImage(file="circle_map.gif")
+bridge_map_img = PhotoImage(file="bridge_map.gif")
+x_map_img = PhotoImage(file="x_map.gif")
+
+
+
 
 
 explosion = PhotoImage(file='explosion.gif')
@@ -61,7 +68,7 @@ gun_dictionary = {
     "M1014":[1,200,18,200,6,9],
     "Spas-12":[1,200,18,200,6,11],
     "DBV-12":[1,120,24,200,8,7],
-    "Mossberg 590":[1,400,18,200,6,5],
+    "Mossberg 590":[1,400,8,200,6,5],
     "Double Barrel":[1,300,12,200,2,4],
     
     
@@ -312,17 +319,67 @@ def about():
 
 
 
+def maps():
+    the_selection = Toplevel()
+    the_selection.geometry("820x406+350+0")
+    the_selection.title('Choose a Map')
+    the_selection.bind("<Button-1>",button_click)
+    
+    def cross_():
+        with open('map.txt','w') as map_:
+            map_.write("""000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000000000000000000\n111111111111000111111111111\n000000000000000000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000""")
+
+    def bridge_():
+        with open('map.txt','w') as map_:
+            map_.write("""100000000000000000000000001\n010000000000000000000000010\n001000000000000000000000100\n000100000000000000000001000\n000010000000000000000010000\n000000000000000000000000000\n111110001111111111100011111\n000000000000000000000000000\n000000100000000000001000000\n000000100000000000001000000\n000000100000000000001000000\n000000100000000000001000000\n000000100000000000001000000""")
+    def circle_():
+        with open('map.txt','w') as map_:
+            map_.write("""000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000111000000000000\n000000000001000100000000000\n000000000000000000000000000\n000000000001000100000000000\n000000000000111000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000\n000000000000010000000000000""")
+    def x_():
+        with open('map.txt','w') as map_:
+            map_.write("""110000000000000000000000011\n001100000000000000000001100\n000011000000000000000110000\n000000110000000000011000000\n000000001100000001100000000\n000000000011000110000000000\n000000000000000000000000000\n000000000011000110000000000\n000000001100000001100000000\n000000110000000000011000000\n000011000000000000000110000\n001100000000000000000001100\n110000000000000000000000011 """)
+    
+    cross_map = Button(the_selection,image=cross_map_img,command=cross_)
+    bridge_map = Button(the_selection,image=bridge_map_img,command=bridge_)
+    circle_map = Button(the_selection,image=circle_map_img,command=circle_)
+    x_map = Button(the_selection,image=x_map_img,command=x_)
+    
+    
+    
+    cross_map.grid(row=0,column=0)
+    cross_map.image = cross_map_img
+    
+    bridge_map.grid(row=0,column=1)
+    bridge_map.image = bridge_map_img
+    
+    circle_map.grid(row=1,column=0)
+    circle_map.image = circle_map_img
+    
+    x_map.grid(row=1,column=1)
+    x_map.image = x_map_img
+    
+    
+    
+    
+    
 def button_click(event):
     audio_file = "/Users/cisnerosa/documents/Big_2D_Project/Click_Noise.mp3"
     play = subprocess.call(["afplay", audio_file])
-    
-    
-    
+
+
+
 
 startbutton = Button(text="Start",command=start)
 class_button = Button(text="Create Class",command=make_class)
+map_button = Button(text="Choose a Map",command=maps)
 about_button = Button(text="About The Game...",command=about)
+
+
+
 main.bind("<Button-1>",button_click)
+
+
+
 
 def access():
     if class_made == False:
@@ -339,9 +396,10 @@ access()
 
 
 
-startbutton.pack(pady=50,fill='x')
-class_button.pack(pady=50,fill='x')
-about_button.pack(pady=50,fill='x')
+startbutton.pack(pady=30,fill='x')
+class_button.pack(pady=30,fill='x')
+map_button.pack(pady=30,fill='x')
+about_button.pack(pady=30,fill='x')
 
 
 

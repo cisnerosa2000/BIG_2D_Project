@@ -1,4 +1,3 @@
-
 from Tkinter import *
 import random
 import math
@@ -11,7 +10,10 @@ root.geometry("1366x650+200+0")
 canvas = Canvas()
 canvas.config(width=1350,height=650,bg='light blue')
 
+###import audio
+gunshot_file = "/Users/cisnerosa/documents/Big_2D_Project/Gunshot.mp3"
 
+###import audio
 
 
 
@@ -55,7 +57,7 @@ out_of_ammo = PhotoImage(file='no_ammo.gif')
 
 block = PhotoImage(file='block.gif')
 collide_block = PhotoImage(file='collision_block.gif')
-
+sky_tile = PhotoImage(file='Sky.gif')
 
 ### Load sprites
 
@@ -113,7 +115,9 @@ firing = False
 bullet_list = []
 
 def make_level():
-    coords = [50,50]
+    global tile_list
+    coords = [25,25]
+    tile_list = []
     with open('map.txt') as tilemap:
         while True:
             c = (tilemap.read(1))
@@ -122,33 +126,36 @@ def make_level():
                 
            
            
-            
             if c == """\n""":
-               coords[1] += 50
-               coords[0] = 0
-               make = False
+                coords[1] += 50
+                coords[0] = 25
+                make = False
                
-            
-            if c == '1':
+            elif c == '0':
+                make = True
+            elif c == '1':
                 tileimg = collide_block
                 make = True
             elif c == '2':
                 tileimg = block
                 make = True
-            else:
-                make = False
-           
+               
             
             if make == True:
-                tile = canvas.create_image(*coords,image=tileimg,tags="collide")
-                if tileimg == collide_block:
-                    canvas.itemconfig(tile,tags=("player_collide"))
-
-
+                if c != '0':
+                    tile = canvas.create_image(*coords,image=tileimg)
+                    
+                    if c == '1':
+                        canvas.itemconfig(tile,tags="player_collide")
+                        tile_list.append(tile)
+                    elif c == '2':
+                        canvas.itemconfig(tile,tags="collide")
+                    
+                
                 
                     
         
-            coords[0] += 50
+                coords[0] += 50
                 
                          
             
@@ -156,6 +163,34 @@ make_level()
 
 
 
+class Environment(object):
+    def __init__(self,gravity,friction,jumping):
+        self.gravity = gravity
+        self.friction = friction
+        self.jumping = jumping
+        
+class Ground(object):
+    def __init__(self):
+        pass
+    def colliding(self):
+        self.ground_bbox = canvas.bbox(player.the_player)
+        self.collide_list = canvas.find_overlapping(*self.ground_bbox)
+        
+        for i in self.collide_list:
+            if "ground" in canvas.gettags(i):
+                return True
+                break
+        
+    def draw_lines(self):
+        global tile_list
+        for tile in tile_list:
+            self.tc = canvas.coords(tile)
+            
+            self.tile_line = canvas.create_line(self.tc[0]-25,self.tc[1]-30,self.tc[0]+25,self.tc[1]-30,fill="blue",tags="ground")
+        
+environment = Environment(gravity=.5,friction=1,jumping=False)
+ground = Ground()
+ground.draw_lines()
 class Loadout(object):
     def __init__(self):
         pass
@@ -169,7 +204,7 @@ class Loadout(object):
             self.ammo = int(file_lines[3])
             self.range = int(file_lines[4])
             self.mag_cap = int(file_lines[5])
-            self.accuracy = int(file_lines[6])
+            self.accuracy = float(file_lines[6])
             self.weapon_type = str(file_lines[7])
             self.gun = file_lines[8]
         #print self.gun,self.health,self.damage,self.firerate,self.ammo,self.range,self.accuracy,self.weapon_type
@@ -197,7 +232,21 @@ class Player(object):
 
     
     def player_loop(self):
-       ### Update crosshair
+        
+       self.velocity[1] += environment.gravity
+       
+       if ground.colliding() == True:
+           environment.gravity = 0
+           if environment.jumping == False:
+               self.velocity[1] = 0
+           
+       else:
+           environment.gravity = .5
+           environment.jumping = False
+            
+       if player.velocity[1] >= 2:
+           player.velocity[1] = 2
+      
        
        if self.health > 0:
            self.alive = True
@@ -207,6 +256,14 @@ class Player(object):
            self.health = 0
        
        
+      
+      
+      
+      
+      
+       
+       
+       ### Update crosshair
        try:
            canvas.delete(self.crosshair)
            canvas.delete(self.health_bar_outline)
@@ -228,7 +285,6 @@ class Player(object):
       
        
        
-
        
        
        def crosshair_update():
@@ -260,10 +316,9 @@ class Player(object):
        
        ###display gun
        
-               
-       canvas.move(self.the_player,self.velocity[0],self.velocity[1])
+     
            
-
+       
       
        if self.velocity[0] > 0:
            self.velocity[0] -= .1
@@ -276,12 +331,12 @@ class Player(object):
            self.velocity[1] += .1
                
        
-       
            
        
        
        
        
+      
       
       
        if self.coords[0] >= 1366 or self.coords[0] <= 0:
@@ -290,34 +345,53 @@ class Player(object):
            self.velocity[1] *= -1
            
       
-       if self.coords[0] >= 1366:
-           canvas.move(self.the_player,-10,0)
-       elif self.coords[0] <= 0:
-           canvas.move(self.the_player,10,0)
-           
-       elif self.coords[1] >= 650: 
-           canvas.move(self.the_player,0,-10)
-           
-       elif self.coords[1] <= 0:
-           canvas.move(self.the_player,0,10)
-           
-           
-       
-      
-      
+     
        my_bbox = canvas.bbox(self.the_player)
        the_overlap = canvas.find_overlapping(*my_bbox)
+       
+       print self.velocity
+       
        
        for collision in the_overlap:
            global move
            if 'player_collide' in canvas.gettags(collision):
-               canvas.move(self.the_player,self.velocity[0]*-1,self.velocity[1]*-1)
-               self.velocity[0] = 0
-               self.velocity[1] = 0
+               dx = abs(canvas.coords(self.the_player)[0] - canvas.coords(collision)[0]  )
+               dy = abs(canvas.coords(self.the_player)[1] - canvas.coords(collision)[1]  )
+               #finds the distance between y's and distnace between x's
+           
+               
+               
+               if dy < dx:
+                   #side hit
+                   canvas.move(self.the_player,-self.velocity[0],-self.velocity[1])
+                   self.velocity[0] *= -1 
+               elif dy > dx and self.velocity[1] < 0:
+                   canvas.move(self.the_player,-self.velocity[0],-self.velocity[1])
+                   self.velocity[1] *= -.5
+               
+                   
+           
+           
+        
+           
+   
+          
+          
+           
+               
+                   
+                   
+          
+               
+           #if the distance between y's is less than the distance between x's, it was a side hit
+               
+           
+           
+            
                
                
        self.health_bar_outline = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+my_loadout.health,self.coords[1]-70)
-       self.health_bar = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+self.health,self.coords[1]-70,fill='green'           )
+       self.health_bar = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+self.health,self.coords[1]-70,fill='green')
        
        if len(bullet_list) >= 1000:
            canvas.delete(bullet_list[0].bimage)
@@ -325,6 +399,8 @@ class Player(object):
            
        
        
+       
+       canvas.move(self.the_player,self.velocity[0],self.velocity[1])
        root.after(10,self.player_loop)
     def fire(self):
         global firing
@@ -486,12 +562,10 @@ class Player(object):
             bullet_list.append(bullet_obj)
             self.mag -= 1
             
-            
             #play = subprocess.call(["afplay", gunshot_file])
             ###^^^ currently lags the game an insane amount^^^
         elif my_loadout.weapon_type == 'Shotgun \n' and self.alive == True and self.mag > 0:
             #gcoords = canvas.coords(self.gun_image)
-            
             
             
             left_theta = deg2rad(my_loadout.accuracy)
@@ -528,7 +602,8 @@ class Player(object):
             
             self.mag -= 1
             
-           
+            #play = subprocess.call(["afplay", gunshot_file])
+            ###^^^ currently lags the game an insane amount^^^
             
             
         
@@ -542,12 +617,8 @@ class Player(object):
 
 
 
-
-
-
 my_loadout = Loadout()
 my_loadout.class_determine()
-
 
 player = Player(coords=[400,100],velocity=[0,0],ammo=int(my_loadout.ammo),health=int(my_loadout.health),dmg=int(my_loadout.damage),image=player_sprite,mag=my_loadout.mag_cap)
 player.make()
@@ -562,22 +633,19 @@ text.config(width=15,height=8)
 text.config(bg='grey')
 
 def text_loop():
-    
     text.config(state=NORMAL)
     text.delete(1.0,END)
     text.insert(INSERT,"Health: %s \n" % player.health)
     text.insert(INSERT,"Total Ammo: %s\n" % player.ammo)
     text.insert(INSERT,"Magazine: %s \n" % player.mag)
     text.insert(INSERT,"Score: %s " % player.points)
-    
 
     
     text.config(state=DISABLED)
     root.after(1,text_loop)
 
-text_loop()
 text.place(x=1255,y=0)
-
+text_loop()
 
 ### mapping keys 
 
@@ -589,9 +657,8 @@ def settrue(event):
         player.semi()
         
 def setfalse(event):
-    if my_loadout.weapon_type == 'Assualt Rifle \n' or my_loadout.weapon_type == 'Submachine Gun \n' or my_loadout.weapon_type == 'LMG \n':
-        global firing
-        firing = False
+    global firing
+    firing = False
 
 
 root.bind('<ButtonPress-1>', settrue)
@@ -600,16 +667,14 @@ root.bind('<ButtonRelease-1>', setfalse)
 
 
 
-def move_up(event):
-    global move
     
-    if player.alive == True:
-        player.velocity[1] -= 3
-def move_down(event):
+def jump(event):
     global move
-    
-    if player.alive == True:
-        player.velocity[1] += 3
+    print "trying!"
+    if player.alive == True and environment.gravity == 0:
+        environment.jumping = True
+        canvas.move(player.the_player,0,-5)
+        player.velocity[1] = -12
 def move_right(event):
     global move
     
@@ -646,8 +711,7 @@ def _reload_(event):
 
 root.bind('<d>',move_right)
 root.bind('<a>',move_left)
-root.bind('<w>',move_up)
-root.bind('<s>',move_down)
+root.bind('<w>',jump)
 root.bind('<r>',_reload_)
 
 ### mapping keys

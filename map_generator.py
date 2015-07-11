@@ -1,17 +1,19 @@
 import random
-import numpy as np
 
 x = 27
 y = 13
 
 grid = []
 gridlist = []
+
+choices = ['a','b','c','d','1','2','3','0','e','f','g']
 def makegrid():
     global grid
     
     
     for i in range(x):
-        grid.append(str(random.randint(0,9)))
+        chosen = random.choice(choices)
+        grid.append(chosen)
                                      #^^^^^^^increase to generate less blocks, decrease to generate more
     my_grid = "".join(grid)
     return my_grid
