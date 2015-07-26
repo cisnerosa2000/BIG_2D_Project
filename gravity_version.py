@@ -59,6 +59,13 @@ block = PhotoImage(file='block.gif')
 collide_block = PhotoImage(file='collision_block.gif')
 sky_tile = PhotoImage(file='Sky.gif')
 
+flag0 = PhotoImage(file='drop.gif')
+flag1 = PhotoImage(file='drop2.gif')
+flag2 = PhotoImage(file='drop3.gif')
+flag3 = PhotoImage(file='drop4.gif')
+flag4 = PhotoImage(file='drop5.gif')
+flag5 = PhotoImage(file='drop6.gif')
+
 ### Load sprites
 
 
@@ -114,6 +121,45 @@ global bullet_list
 firing = False
 bullet_list = []
 
+class Objective(object):
+    def __init__(self,image,percent):
+        self.image = image
+        self.bbox = canvas.bbox(self.image)
+        self.percent = percent
+        
+    def check(self):
+        self.overlapping = canvas.find_overlapping(*self.bbox)
+        for i in self.overlapping:
+         
+            if 'player' in canvas.gettags(i):
+                if self.percent < 10:
+                    self.percent += 1
+        print self.percent
+        if self.percent == 2:
+            canvas.itemconfig(self.image,image=flag1)
+        elif self.percent == 4:
+            canvas.itemconfig(self.image,image=flag2)
+        elif self.percent == 6:
+            canvas.itemconfig(self.image,image=flag3)
+        elif self.percent == 8:
+            canvas.itemconfig(self.image,image=flag4)
+        elif self.percent == 10:
+            self.percent = 11
+            canvas.itemconfig(self.image,image=flag5)
+            player.points += 10
+            root.after(5000,self.reset)
+                
+        root.after(1000,self.check)
+        
+        
+
+    def reset(self):
+        self.percent = 0
+        canvas.itemconfig(self.image,image=flag0)
+        
+        
+        
+        
 def make_level():
     global tile_list
     coords = [25,25]
@@ -139,6 +185,9 @@ def make_level():
             elif c == '2':
                 tileimg = block
                 make = True
+            elif c == '3':
+                tileimg = flag0
+                make = True
                
             
             if make == True:
@@ -150,6 +199,11 @@ def make_level():
                         tile_list.append(tile)
                     elif c == '2':
                         canvas.itemconfig(tile,tags="collide")
+                    elif c == '3':
+                        tile_list.append(tile)
+                        canvas.itemconfig(tile,tags="flag")
+                        flag = Objective(image = tile,percent=0)
+                        flag.check()
                     
                 
                 
@@ -185,9 +239,12 @@ class Ground(object):
         global tile_list
         for tile in tile_list:
             self.tc = canvas.coords(tile)
-            
-            self.tile_line = canvas.create_line(self.tc[0]-25,self.tc[1]-30,self.tc[0]+25,self.tc[1]-30,fill="blue",tags="ground")
-        
+            if canvas.gettags(tile) == ('flag',):
+                self.tile_line = canvas.create_line(self.tc[0]-25,self.tc[1]+30,self.tc[0]+25,self.tc[1]+30,fill="blue",tags="ground")
+            else:
+                self.tile_line = canvas.create_line(self.tc[0]-25,self.tc[1]-30,self.tc[0]+25,self.tc[1]-30,fill="blue",tags="ground")
+                
+                
 environment = Environment(gravity=.5,friction=1,jumping=False)
 ground = Ground()
 ground.draw_lines()
@@ -349,7 +406,6 @@ class Player(object):
        my_bbox = canvas.bbox(self.the_player)
        the_overlap = canvas.find_overlapping(*my_bbox)
        
-       print self.velocity
        
        
        for collision in the_overlap:
@@ -461,7 +517,7 @@ class Player(object):
         
         
     def make(self):
-        self.the_player = canvas.create_image(*self.coords,image=self.image)
+        self.the_player = canvas.create_image(*self.coords,image=self.image,tags="player")
         self.points = 0
        
 
@@ -670,7 +726,6 @@ root.bind('<ButtonRelease-1>', setfalse)
     
 def jump(event):
     global move
-    print "trying!"
     if player.alive == True and environment.gravity == 0:
         environment.jumping = True
         canvas.move(player.the_player,0,-5)

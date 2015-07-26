@@ -1,9 +1,9 @@
-
 from Tkinter import *
 import random
 import math
 import subprocess 
 from numpy import deg2rad
+import socket
 
 root = Tk()
 root.title("The Game...")
@@ -55,6 +55,13 @@ out_of_ammo = PhotoImage(file='no_ammo.gif')
 
 block = PhotoImage(file='block.gif')
 collide_block = PhotoImage(file='collision_block.gif')
+
+flag0 = PhotoImage(file='drop.gif')
+flag1 = PhotoImage(file='drop2.gif')
+flag2 = PhotoImage(file='drop3.gif')
+flag3 = PhotoImage(file='drop4.gif')
+flag4 = PhotoImage(file='drop5.gif')
+flag5 = PhotoImage(file='drop6.gif')
 
 
 ### Load sprites
@@ -108,12 +115,49 @@ gun_lookup = {
 
 
 global firing
-global bullet_list 
 firing = False
-bullet_list = []
+class Lists(object):
+    def __init__(self):
+        self.player_list = []
+        self.bullet_list = []
+        self.tile_list = []
+lists = Lists()
+class Objective(object):
+    def __init__(self,image,percent):
+        self.image = image
+        self.bbox = canvas.bbox(self.image)
+        self.percent = percent
+        
+    def check(self):
+        self.overlapping = canvas.find_overlapping(*self.bbox)
+        for i in self.overlapping:
+         
+            if 'player' in canvas.gettags(i):
+                if self.percent < 10:
+                    self.percent += 1
+        if self.percent == 2:
+            canvas.itemconfig(self.image,image=flag1)
+        elif self.percent == 4:
+            canvas.itemconfig(self.image,image=flag2)
+        elif self.percent == 6:
+            canvas.itemconfig(self.image,image=flag3)
+        elif self.percent == 8:
+            canvas.itemconfig(self.image,image=flag4)
+        elif self.percent == 10:
+            canvas.itemconfig(self.image,image=flag5)
+            root.after(5000,self.reset)
+            self.percent = 11
+            player.points += 100
+                
+        root.after(1000,self.check)
+        
+        
 
+    def reset(self):
+        canvas.itemconfig(self.image,image=flag0)
+        self.percent = 0
 def make_level():
-    coords = [50,50]
+    coords = [25,25]
     with open('map.txt') as tilemap:
         while True:
             c = (tilemap.read(1))
@@ -122,33 +166,44 @@ def make_level():
                 
            
            
-            
             if c == """\n""":
-               coords[1] += 50
-               coords[0] = 0
-               make = False
+                coords[1] += 50
+                coords[0] = 25
+                make = False
                
-            
-            if c == '1':
+            elif c == '0':
+                make = True
+            elif c == '1':
                 tileimg = collide_block
                 make = True
             elif c == '2':
                 tileimg = block
                 make = True
-            else:
-                make = False
-           
+            elif c == '3':
+                tileimg = flag0
+                make = True
+               
             
             if make == True:
-                tile = canvas.create_image(*coords,image=tileimg,tags="collide")
-                if tileimg == collide_block:
-                    canvas.itemconfig(tile,tags=("player_collide"))
-
-
+                if c != '0':
+                    tile = canvas.create_image(*coords,image=tileimg)
+                    
+                    if c == '1':
+                        canvas.itemconfig(tile,tags="player_collide")
+                        lists.tile_list.append(tile)
+                    elif c == '2':
+                        canvas.itemconfig(tile,tags="collide")
+                    elif c == '3':
+                        lists.tile_list.append(tile)
+                        canvas.itemconfig(tile,tags="flag")
+                        flag = Objective(image = tile,percent=0)
+                        flag.check()
+                    
+                
                 
                     
         
-            coords[0] += 50
+                coords[0] += 50
                 
                          
             
@@ -156,6 +211,8 @@ make_level()
 
 
 
+        
+    
 class Loadout(object):
     def __init__(self):
         pass
@@ -172,7 +229,6 @@ class Loadout(object):
             self.accuracy = int(file_lines[6])
             self.weapon_type = str(file_lines[7])
             self.gun = file_lines[8]
-        #print self.gun,self.health,self.damage,self.firerate,self.ammo,self.range,self.accuracy,self.weapon_type
         
             
 
@@ -202,16 +258,17 @@ class Player(object):
        if self.health > 0:
            self.alive = True
            
-       elif self.health <= 0:
+       elif self.health <= 0 and self == player:
            self.alive=False
            self.health = 0
        
        
        try:
-           canvas.delete(self.crosshair)
+           
            canvas.delete(self.health_bar_outline)
            canvas.delete(self.health_bar)
            canvas.delete(self.gun_image)
+           canvas.delete(self.crosshair)
           
            
        except AttributeError:
@@ -238,17 +295,17 @@ class Player(object):
            xy2 = x2 + y2
            
            global distance
-           distance = math.sqrt(xy2)
+           self.distance = math.sqrt(xy2)
            
-           if self.alive == False:
+           if self.alive == False and self == player:
                self.crosshair = canvas.create_image(self.mx,self.my,image=death_message)
-           elif self.alive == True and self.ammo <= 0 and self.mag <= 0:
+           elif self.alive == True and self.ammo <= 0 and self.mag <= 0 and self == player:
                self.crosshair = canvas.create_image(self.mx,self.my,image=out_of_ammo)
-           elif self.alive == True and self.mag == 0 and self.ammo > 0:
+           elif self.alive == True and self.mag == 0 and self.ammo > 0 and self == player:
                self.crosshair = canvas.create_image(self.mx,self.my,image=reload_image)
-           elif self.alive == True and int(distance) <= int(my_loadout.range) and self.mag > 0:
+           elif self.alive == True and int(self.distance) <= int(my_loadout.range) and self.mag > 0 and self == player:
                self.crosshair = canvas.create_image(self.mx,self.my,image=in_range_crosshair)
-           elif self.alive == True and int(distance) > int(my_loadout.range) and self.mag > 0:
+           elif self.alive == True and int(self.distance) > int(my_loadout.range) and self.mag > 0 and self == player:
                self.crosshair = canvas.create_image(self.mx,self.my,image=not_in_range_crosshair)
         
          
@@ -284,22 +341,9 @@ class Player(object):
        
       
       
-       if self.coords[0] >= 1366 or self.coords[0] <= 0:
-           self.velocity[0] *= -1
-       if self.coords[1] >= 650 or self.coords[1] <= 0:
-           self.velocity[1] *= -1
+    
            
       
-       if self.coords[0] >= 1366:
-           canvas.move(self.the_player,-10,0)
-       elif self.coords[0] <= 0:
-           canvas.move(self.the_player,10,0)
-           
-       elif self.coords[1] >= 650: 
-           canvas.move(self.the_player,0,-10)
-           
-       elif self.coords[1] <= 0:
-           canvas.move(self.the_player,0,10)
            
            
        
@@ -314,21 +358,24 @@ class Player(object):
                canvas.move(self.the_player,self.velocity[0]*-1,self.velocity[1]*-1)
                self.velocity[0] = 0
                self.velocity[1] = 0
+           if 'bullet' in canvas.gettags(collision) and self.health > 0 and canvas.gettags(collision)[2] != '%s' % self:
+               dmg = int(canvas.gettags(collision)[1])
+               self.health -= dmg
+               
                
                
        self.health_bar_outline = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+my_loadout.health,self.coords[1]-70)
        self.health_bar = canvas.create_rectangle(self.coords[0]-50,self.coords[1]-50,self.coords[0]-50+self.health,self.coords[1]-70,fill='green'           )
        
-       if len(bullet_list) >= 1000:
-           canvas.delete(bullet_list[0].bimage)
-           bullet_list.remove(bullet_list[0])
+       if len(lists.bullet_list) >= 1000:
+           canvas.delete(lists.bullet_list[0].bimage)
+           lists.bullet_list.remove(lists.bullet_list[0])
            
        
        
        root.after(10,self.player_loop)
     def fire(self):
         global firing
-        global bullet_list
         global devmode
         
         
@@ -348,32 +395,28 @@ class Player(object):
         
         #gets magnitude with pythagorean theorem
         
-        norm = [mouse_vector[0] / mouse_mag,mouse_vector[1] / mouse_mag]
+        self.norm = [mouse_vector[0] / mouse_mag,mouse_vector[1] / mouse_mag]
         #normalizes the vector
         
         
-        norm[0] *= 10
-        norm[1] *= 10
+        self.norm[0] *= 3
+        self.norm[1] *= 3
         
-        #scales the vector to something more manageable
         
         
         
 
-        if firing == True and self.mag > 0 and self.alive == True:
+        if firing == True and player.mag > 0 and self.alive == True and self == player:
             
-            #gcoords = canvas.coords(self.gun_image)
             
             acc = random.randint(-my_loadout.accuracy,my_loadout.accuracy)
             acc *= .01
             
-            bullet_obj = Bullets(velocity = [norm[0],norm[1]+acc],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
-            bullet_list.append(bullet_obj)
+            bullet_obj = Bullets(velocity = [self.norm[0],self.norm[1]+acc],bimage=canvas.create_image(self.coords[0]+self.norm[0]*3,self.coords[1]+self.norm[1]*3,image=bullet_sprite,tags=('bullet','%s' % self.dmg,'%s' % self)),life=0)
+            lists.bullet_list.append(bullet_obj)
             self.mag -= 1
             
-            #play = subprocess.call(["afplay", gunshot_file])
-            ###^^^ currently lags the game an insane amount^^^
-            
+          
             
         
         
@@ -385,7 +428,7 @@ class Player(object):
         
         
     def make(self):
-        self.the_player = canvas.create_image(*self.coords,image=self.image)
+        self.the_player = canvas.create_image(*self.coords,image=self.image,tags='player')
         self.points = 0
        
 
@@ -397,14 +440,14 @@ class Player(object):
         
         
         try:
-            for bullet in bullet_list:
+            for bullet in lists.bullet_list:
                 bul_coords = canvas.coords(bullet.bimage)
                 
                 
                 canvas.move(bullet.bimage,bullet.velocity[0],bullet.velocity[1])
                 
-                a2 = (canvas.coords(bullet.bimage)[0] - self.coords[0]) ** 2
-                b2 = (canvas.coords(bullet.bimage)[1] - self.coords[1]) ** 2 
+                a2 = (canvas.coords(bullet.bimage)[0] - player.coords[0]) ** 2
+                b2 = (canvas.coords(bullet.bimage)[1] - player.coords[1]) ** 2 
                 
                 c2 = a2 + b2
                 
@@ -413,7 +456,7 @@ class Player(object):
                 
                 if c >= my_loadout.range:
                     canvas.delete(bullet.bimage)
-                    bullet_list.remove(bullet)
+                    lists.bullet_list.remove(bullet)
 
             
             
@@ -427,9 +470,9 @@ class Player(object):
             
             
                     for i in bullet_overlapping:
-                        if 'collide' in canvas.gettags(i) and bullet in bullet_list or 'player_collide' in canvas.gettags(i) and bullet in bullet_list:
+                        if 'collide' in canvas.gettags(i) and bullet in lists.bullet_list or 'player_collide' in canvas.gettags(i) and bullet in lists.bullet_list:
                             canvas.delete(bullet.bimage)
-                            bullet_list.remove(bullet)
+                            lists.bullet_list.remove(bullet)
                         
                     
                
@@ -448,33 +491,40 @@ class Player(object):
 
 
     def semi(self):
-        mouseX,mouseY = canvas.winfo_pointerxy()
-        mouse_location = [mouseX-6,mouseY-50]
-        
-        #gets mouse location^
-        
-        mouse_vector = [mouse_location[0] - self.coords[0],mouse_location[1] - self.coords[1]]
-        
-        #gets the vector between mouse and player^
-        
-        m1 = mouse_vector[0] ** 2
-        m2 = mouse_vector[1] ** 2
-        mouse_mag = math.sqrt(m1 + m2)
-        
-        #gets magnitude with pythagorean theorem
-        
-        norm = [mouse_vector[0] / mouse_mag,mouse_vector[1] / mouse_mag]
-        #normalizes the vector
         
         
-        norm[0] *= 10
-        norm[1] *= 10
+        if self == player:
+            mouseX,mouseY = canvas.winfo_pointerxy()
+            mouse_location = [mouseX-6,mouseY-50]
         
-        #scales the normalized vector, change this to change bullet speed
+            #gets mouse location^
+        
+            mouse_vector = [mouse_location[0] - self.coords[0],mouse_location[1] - self.coords[1]]
+        
+            #gets the vector between mouse and player^
+        
+            m1 = mouse_vector[0] ** 2
+            m2 = mouse_vector[1] ** 2
+            mouse_mag = math.sqrt(m1 + m2)
+        
+            #gets magnitude with pythagorean theorem
+        
+            self.norm = [mouse_vector[0] / mouse_mag,mouse_vector[1] / mouse_mag]
+            #normalizes the vector
+        
+        
+            self.norm[0] *= 10
+            self.norm[1] *= 10
+        
+            #scales the normalized vector, change this to change bullet speed
         
         
         
 
+        elif self == enemy:
+            self.norm = [enemy_ai.target_vector[0] / enemy_ai.distance_to_target,enemy_ai.target_vector[1] / enemy_ai.distance_to_target]
+            self.norm[0] *= 10
+            self.norm[1] *= 10
         if self.mag > 0  and self.alive == True and my_loadout.weapon_type  != 'Shotgun \n':
             
             #gcoords = canvas.coords(self.gun_image)
@@ -482,8 +532,8 @@ class Player(object):
             acc = random.randint(-my_loadout.accuracy,my_loadout.accuracy)
             acc *= .01
             
-            bullet_obj = Bullets(velocity = [norm[0],norm[1]+acc],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
-            bullet_list.append(bullet_obj)
+            bullet_obj = Bullets(velocity = [self.norm[0],self.norm[1]+acc],bimage=canvas.create_image(self.coords[0]+self.norm[0],self.coords[1]+self.norm[1],image=bullet_sprite,tags=('bullet','%s' % self.dmg,'%s' % self)),life=0)
+            lists.bullet_list.append(bullet_obj)
             self.mag -= 1
             
             
@@ -505,25 +555,25 @@ class Player(object):
             
             
             
-            left_x = norm[0] * left_cos - norm[1] * left_sin
-            left_y = norm[0] * left_sin + norm[1] * left_cos            
+            left_x = self.norm[0] * left_cos - self.norm[1] * left_sin
+            left_y = self.norm[0] * left_sin + self.norm[1] * left_cos            
             
-            right_x = norm[0] * right_cos - norm[1] * right_sin
-            right_y = norm[0] * right_sin + norm[1] * right_cos
-            
-            
+            right_x = self.norm[0] * right_cos - self.norm[1] * right_sin
+            right_y = self.norm[0] * right_sin + self.norm[1] * right_cos
             
             
             
             
-            bullet_obj = Bullets(velocity = [left_x,left_y],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
-            bullet_list.append(bullet_obj)
             
-            bullet_obj = Bullets(velocity = [norm[0],norm[1]],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
-            bullet_list.append(bullet_obj)
             
-            bullet_obj = Bullets(velocity = [right_x,right_y],bimage=canvas.create_image(*self.coords,image=bullet_sprite,tags=('bullet','%s' % self.dmg)),life=0)
-            bullet_list.append(bullet_obj)
+            bullet_obj = Bullets(velocity = [left_x,left_y],bimage=canvas.create_image(self.coords[0]+self.norm[0],self.coords[1]+self.norm[1],image=bullet_sprite,tags=('bullet','%s' % self.dmg,'%s' % self)),life=0)
+            lists.bullet_list.append(bullet_obj)
+            
+            bullet_obj = Bullets(velocity = [self.norm[0],self.norm[1]],bimage=canvas.create_image(self.coords[0]+self.norm[0],self.coords[1]+self.norm[1],image=bullet_sprite,tags=('bullet','%s' % self.dmg,'%s' % self)),life=0)
+            lists.bullet_list.append(bullet_obj)
+            
+            bullet_obj = Bullets(velocity = [right_x,right_y],bimage=canvas.create_image(self.coords[0]+self.norm[0],self.coords[1]+self.norm[1],image=bullet_sprite,tags=('bullet','%s' % self.dmg,'%s' % self)),life=0)
+            lists.bullet_list.append(bullet_obj)
             
             
             self.mag -= 1
@@ -549,12 +599,12 @@ my_loadout = Loadout()
 my_loadout.class_determine()
 
 
-player = Player(coords=[400,100],velocity=[0,0],ammo=int(my_loadout.ammo),health=int(my_loadout.health),dmg=int(my_loadout.damage),image=player_sprite,mag=my_loadout.mag_cap)
+player = Player(coords=[100,100],velocity=[0,0],ammo=int(my_loadout.ammo),health=int(my_loadout.health),dmg=int(my_loadout.damage),image=player_sprite,mag=my_loadout.mag_cap)
 player.make()
 player.player_loop()
 player.fire()
 player.fire_loop()
-
+lists.player_list.append(player)
 
 
 text = Text(root)
@@ -578,6 +628,11 @@ def text_loop():
 text_loop()
 text.place(x=1255,y=0)
 
+enemy = Player(coords=[1000,100],velocity=[0,0],ammo=int(my_loadout.ammo),health=100,dmg=10,image=player_sprite,mag=my_loadout.mag_cap)
+enemy.make()
+enemy.player_loop()
+enemy.fire_loop()
+lists.player_list.append(enemy)
 
 ### mapping keys 
 
@@ -625,7 +680,6 @@ def move_left(event):
     
     
 
-
 def _reload_(event):
     if player.mag == 0 and player.ammo >= my_loadout.mag_cap:
         player.ammo -= my_loadout.mag_cap
@@ -649,9 +703,73 @@ root.bind('<a>',move_left)
 root.bind('<w>',move_up)
 root.bind('<s>',move_down)
 root.bind('<r>',_reload_)
-
 ### mapping keys
 
+
+    
+
+
+class AI(object):
+    def __init__(self,body):
+        self.body = body
+    def loop(self):
+        
+  
+       
+        self.target = canvas.coords(player.the_player)
+        self.coords = canvas.coords(self.body.the_player)
+        self.target_vector = [self.target[0] - self.coords[0],self.target[1] - self.coords[1]]
+        
+        
+        self.distance_to_target_2 = self.target_vector[0]**2 + self.target_vector[1]**2
+        self.distance_to_target = math.sqrt(self.distance_to_target_2)
+        self.body.norm = [self.target_vector[0] / self.distance_to_target,self.target_vector[1] / self.distance_to_target]
+        
+        if self.distance_to_target >= my_loadout.range and player.alive == True and self.body.health > 0:
+            try:
+                canvas.move(self.body.the_player,self.body.norm[0]*5,self.body.norm[1]*5)
+            except AttributeError:
+                pass
+        elif self.distance_to_target <= my_loadout.range and player.alive == True and self.body.health > 0:
+            self.body.semi()
+            
+        if self.body.mag == 0:
+            self.body.mag = 30
+            self.body.ammo = 500
+        if self.body.health <= 0:
+            
+          
+            self.respawn()
+            
+ 
+        
+        
+        
+        
+        
+        root.after(100,self.loop)
+
+    def respawn(self):
+        lists.player_list.remove(self.body)
+        enemy = Player(coords=[random.randint(100,1000),random.randint(100,600)],velocity=[0,0],ammo=int(my_loadout.ammo),health=100,dmg=10,image=player_sprite,mag=my_loadout.mag_cap)
+        enemy.make()
+        enemy.player_loop()
+        enemy.fire_loop()
+        lists.player_list.append(enemy)
+        self.body = enemy
+    
+        
+    
+    
+    
+enemy_ai = AI(body=enemy)
+enemy_ai.loop()
+
+
+
+
+
+      
 
 
 

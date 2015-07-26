@@ -8,3 +8,7 @@ def function():
     print "%s rounds per minute" % ms
     function()
 function()
+
+#100 is 600 rpm
+
+#75 is 800 rpm
