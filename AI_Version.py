@@ -709,61 +709,14 @@ root.bind('<r>',_reload_)
     
 
 
-class AI(object):
-    def __init__(self,body):
-        self.body = body
-    def loop(self):
-        
-  
-       
-        self.target = canvas.coords(player.the_player)
-        self.coords = canvas.coords(self.body.the_player)
-        self.target_vector = [self.target[0] - self.coords[0],self.target[1] - self.coords[1]]
-        
-        
-        self.distance_to_target_2 = self.target_vector[0]**2 + self.target_vector[1]**2
-        self.distance_to_target = math.sqrt(self.distance_to_target_2)
-        self.body.norm = [self.target_vector[0] / self.distance_to_target,self.target_vector[1] / self.distance_to_target]
-        
-        if self.distance_to_target >= my_loadout.range and player.alive == True and self.body.health > 0:
-            try:
-                canvas.move(self.body.the_player,self.body.norm[0]*5,self.body.norm[1]*5)
-            except AttributeError:
-                pass
-        elif self.distance_to_target <= my_loadout.range and player.alive == True and self.body.health > 0:
-            self.body.semi()
-            
-        if self.body.mag == 0:
-            self.body.mag = 30
-            self.body.ammo = 500
-        if self.body.health <= 0:
-            
-          
-            self.respawn()
-            
- 
-        
-        
-        
-        
-        
-        root.after(100,self.loop)
 
-    def respawn(self):
-        lists.player_list.remove(self.body)
-        enemy = Player(coords=[random.randint(100,1000),random.randint(100,600)],velocity=[0,0],ammo=int(my_loadout.ammo),health=100,dmg=10,image=player_sprite,mag=my_loadout.mag_cap)
-        enemy.make()
-        enemy.player_loop()
-        enemy.fire_loop()
-        lists.player_list.append(enemy)
-        self.body = enemy
-    
+
+
         
     
     
     
-enemy_ai = AI(body=enemy)
-enemy_ai.loop()
+
 
 
 
